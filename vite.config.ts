@@ -1,6 +1,11 @@
+import { defineConfig } from 'vite'; // บรรทัดนี้สำคัญมาก!
+import react from '@vitejs/plugin-react';
+import path from 'path';
+// หลังจากนั้นค่อยเป็นส่วน export default
 export default defineConfig(() => {
   return {
-    base: '/Ecash/', // เพิ่มบรรทัดนี้ครับ
+    base: '/Ecash/',
+    // ... โค้ดส่วนที่เหลือ
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
