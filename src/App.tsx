@@ -57,7 +57,11 @@ import PdfExportModal from './components/PdfExportModal';
 export default function App() {
   // --- Persisted State ---
   const [currentYear, setCurrentYear] = useState<string>(() => {
-    return localStorage.getItem('sa_current_year') || '2566';
+    const saved = localStorage.getItem('sa_current_year');
+    if (saved === '2566') {
+      return '2569';
+    }
+    return saved || '2569';
   });
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
@@ -156,7 +160,13 @@ export default function App() {
   // --- Form States ---
   const [newTxTitle, setNewTxTitle] = useState('');
   const [newTxAmount, setNewTxAmount] = useState('');
-  const [newTxDate, setNewTxDate] = useState('');
+  const [newTxDate, setNewTxDate] = useState(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
   const [newTxCategory, setNewTxCategory] = useState('');
   const [newTxPayerPayee, setNewTxPayerPayee] = useState('');
   const [newTxStatus, setNewTxStatus] = useState<'approved' | 'pending'>('approved');
@@ -338,6 +348,35 @@ export default function App() {
       return;
     }
 
+    // คำนวณปีงบประมาณจากวันที่รายการเดินทาง (newTxDate)
+    let txFiscalYear = currentYear;
+    if (newTxDate) {
+      const dateParts = newTxDate.split('-');
+      if (dateParts.length === 3) {
+        const gregorianYear = parseInt(dateParts[0], 10);
+        const month = parseInt(dateParts[1], 10);
+        // ในระบบปีงบประมาณไทย เริ่มต้นวันที่ 1 ตุลาคม ของปีก่อนหน้า จนถึง 30 กันยายน ของปีปัจจุบัน
+        // เช่น วันที่ 1 ต.ค. 2025 - 30 ก.ย. 2026 จะเป็นปีงบประมาณ 2569
+        // ปี พ.ศ. = ค.ศ. + 543
+        // ถ้าเดือน >= 10 (ต.ค., พ.ย., ธ.ค.) ปีงบประมาณจะบวกเพิ่มไปอีก 1 ปี
+        const yearBE = gregorianYear + 543;
+        if (month >= 10) {
+          txFiscalYear = String(yearBE + 1);
+        } else {
+          txFiscalYear = String(yearBE);
+        }
+      }
+    }
+
+    // ตรวจสอบและลงทะเบียนปีงบประมาณใหม่ลงใน budgetConfigs หากยังไม่มีระบบคุมงบสำหรับปีนี้
+    setBudgetConfigs(prev => {
+      const exists = prev.some(b => b.fiscalYear === txFiscalYear);
+      if (!exists) {
+        return [...prev, { fiscalYear: txFiscalYear, totalBudget: 1500000 }].sort((a, b) => b.fiscalYear.localeCompare(a.fiscalYear));
+      }
+      return prev;
+    });
+
     const newTx: Transaction = {
       id: `tx-${Date.now()}`,
       title: newTxTitle,
@@ -348,16 +387,21 @@ export default function App() {
       description: newTxDescription,
       payerOrPayee: newTxPayerPayee || (transactionFormType === 'income' ? 'กรมส่งเสริมท้องถิ่น' : 'ไม่ระบุ'),
       status: transactionFormType === 'income' ? 'approved' : newTxStatus,
-      fiscalYear: currentYear,
+      fiscalYear: txFiscalYear,
       attachmentName: newTxAttachment
     };
 
     setTransactions(prev => [newTx, ...prev]);
+    setCurrentYear(txFiscalYear);
 
     // Reset Form
     setNewTxTitle('');
     setNewTxAmount('');
-    setNewTxDate('');
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    setNewTxDate(`${year}-${month}-${day}`);
     setNewTxCategory('');
     setNewTxPayerPayee('');
     setNewTxStatus('approved');
@@ -458,7 +502,7 @@ export default function App() {
         setTransactions(initialTransactions);
         setCategories(initialCategories);
         setBudgetConfigs(initialBudgetConfigs);
-        setCurrentYear('2566');
+        setCurrentYear('2569');
         setActiveTab('dashboard');
         showToast('รีเซ็ตข้อมูลสู่ระบบเริ่มต้นเรียบร้อยแล้ว!', 'success');
       }
@@ -781,22 +825,7 @@ export default function App() {
               </AnimatePresence>
             </div>
 
-            {/* Quick Profile info */}
-            <div className="flex items-center space-x-3 border-l border-slate-100 pl-4">
-              <div className="text-right">
-                <p className="text-xs font-semibold text-slate-700">นายสมชาย ใจดี</p>
-                <p className="text-[9px] text-slate-400 font-mono tracking-wider font-medium">เจ้าพนักงานการเงิน</p>
-              </div>
-              <div className="relative">
-                <img
-                  alt="Avatar"
-                  src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120"
-                  className="w-9 h-9 rounded-full object-cover border border-slate-200"
-                  referrerPolicy="no-referrer"
-                />
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></span>
-              </div>
-            </div>
+
           </div>
         </header>
 
@@ -1693,14 +1722,7 @@ export default function App() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* User 1 */}
                   <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col items-center text-center transition-all duration-200 hover:shadow-md">
-                    <div className="relative">
-                      <img
-                        src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120"
-                        className="w-16 h-16 rounded-full object-cover border-2 border-blue-400"
-                        referrerPolicy="no-referrer"
-                      />
-                      <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></span>
-                    </div>
+
 
                     {isEditingUser1 ? (
                       <div className="mt-4 space-y-3 w-full text-left">
@@ -1763,14 +1785,7 @@ export default function App() {
 
                   {/* User 2 */}
                   <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col items-center text-center transition-all duration-200 hover:shadow-md">
-                    <div className="relative">
-                      <img
-                        src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=120"
-                        className="w-16 h-16 rounded-full object-cover border-2 border-emerald-400"
-                        referrerPolicy="no-referrer"
-                      />
-                      <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></span>
-                    </div>
+
 
                     {isEditingUser2 ? (
                       <div className="mt-4 space-y-3 w-full text-left">
@@ -1833,14 +1848,7 @@ export default function App() {
 
                   {/* User 3 */}
                   <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col items-center text-center transition-all duration-200 hover:shadow-md">
-                    <div className="relative">
-                      <img
-                        src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=120"
-                        className="w-16 h-16 rounded-full object-cover border-2 border-purple-400"
-                        referrerPolicy="no-referrer"
-                      />
-                      <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></span>
-                    </div>
+
 
                     {isEditingUser3 ? (
                       <div className="mt-4 space-y-3 w-full text-left">

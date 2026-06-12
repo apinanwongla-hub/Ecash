@@ -13,10 +13,14 @@ export const initialCategories: Category[] = [
   { id: 'cat5', name: 'ค่าครุภัณฑ์และอื่นๆ', color: '#ef4444', budgetLimit: 195000 },
 ];
 
+const currentBEYear = '2569';
+const yearMinus1 = '2568';
+const yearMinus2 = '2567';
+
 export const initialBudgetConfigs: BudgetConfig[] = [
-  { fiscalYear: '2566', totalBudget: 1500000 },
-  { fiscalYear: '2565', totalBudget: 1200000 },
-  { fiscalYear: '2564', totalBudget: 1000000 },
+  { fiscalYear: currentBEYear, totalBudget: 1500000 },
+  { fiscalYear: yearMinus1, totalBudget: 1200000 },
+  { fiscalYear: yearMinus2, totalBudget: 1000000 },
 ];
 
 export const initialTransactions: Transaction[] = [];
