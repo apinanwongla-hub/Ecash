@@ -1,0 +1,6 @@
+{
+  "name": "ระบบบันทึกรายจ่ายองค์กร",
+  "description": "ระบบรายงานและบริหารการเงิน รายรับ-รายจ่าย องค์การบริหารส่วนตำบลบ้านฉลีก ติดตามงานงบประมาณอย่างโปร่งใสและแสดงผลกราฟิกทันสมัย",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
